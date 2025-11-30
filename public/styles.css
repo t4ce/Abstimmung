@@ -111,7 +111,7 @@ p {
   gap: 0.15rem;
 }
 
-.panel-subtitle {
+.panel-caption {
   font-size: 0.95rem;
   color: #475467;
 }
@@ -313,9 +313,13 @@ button:disabled {
   font-weight: 700;
 }
 
-#admin-panel details > summary {
-  cursor: pointer;
-  font-weight: 600;
+#admin-panel {
+  grid-column: 1 / -1;
+}
+
+.admin-title {
+  margin: 0;
+  font-size: 1.1rem;
 }
 
 .admin-locked,

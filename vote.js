@@ -52,7 +52,7 @@ const topics = [
 	{
 		id: "vote4",
 		title: "Ethereum Acronym",
-		question: "Wofuer steht Ethereum eurer Meinung nach?",
+		question: "Bei nur einer Auswahl: Was beschreibt Ethereum am treffendsten?",
 		chartType: "pie",
 		implemented: true,
 		options: [
@@ -75,9 +75,112 @@ const topics = [
 			{ id: "compare", label: "Vergleichbar zu Finanzsektor" }
 		]
 	},
+	{
+		id: "vote6",
+		title: "Blockchain Potential",
+		question: "Wo hat Blockchain & Co. am meisten Potential aus eurer Sicht?",
+		chartType: "radar",
+		implemented: true,
+		options: [
+			{ id: "gaming", label: "Gaming und Unterhaltung" },
+			{ id: "energy", label: "Energie und Nachhaltigkeit" },
+			{ id: "health", label: "Gesundheitswesen" },
+			{ id: "supply", label: "Supply Chain Management" },
+			{ id: "finance", label: "Finanzen und Zahlungsverkehr" }
+		]
+	},
+	{
+		id: "vote7",
+		title: "Bitcoin Preis",
+		question: "Wird ein Bitcoin jemals 1.000.000 Euro wert sein?",
+		chartType: "doughnut",
+		implemented: true,
+		options: [
+			{ id: "yes", label: "Ja" },
+			{ id: "no", label: "Nein" }
+		]
+	},
+	{
+		id: "vote8",
+		title: "Ökologische Ethik",
+		question: "Wie sollen wir mit Energie- & Ressourcenverbrauch von Blockchain-Netzen umgehen?",
+		chartType: "bar",
+		implemented: true,
+		options: [
+			{ id: "pos", label: "Nur Proof-of-Stake & effiziente Chains" },
+			{ id: "renewable", label: "Mining nur mit 100% Erneuerbaren" },
+			{ id: "offset", label: "CO₂-Kompensation & Energiesteuern" },
+			{ id: "statusquo", label: "Freier Markt – keine Vorgaben" }
+		]
+	},
+	{
+		id: "vote9",
+		title: "Autonomie und Freiheit",
+		question: "Wie viel Regulierung soll es für Wallets, Smart Contracts & DAOs geben?",
+		chartType: "pie",
+		implemented: true,
+		options: [
+			{ id: "minimal", label: "Volle Selbstverwahrung, kaum Aufsicht" },
+			{ id: "balanced", label: "Bankkonto-Standard: KYC bei Wallet & Ramp" },
+			{ id: "strongstate", label: "Strikte KYC/AML auf allen Ebenen" },
+			{ id: "collective", label: "Community-Governance mit Vetorecht durch z.B.Behörde" }
+		]
+	},
+	{
+		id: "vote10",
+		title: "Globale Ethik",
+		question: "Brauchen wir globale Ethik-Standards für Blockchain-Einsätze?",
+		chartType: "pie",
+		implemented: true,
+		options: [
+			{ id: "universal", label: "Ja, UN-Charta für DLT" },
+			{ id: "hybrid", label: "Kernprinzipien global, Regeln lokal" },
+			{ id: "relativ", label: "Jede Jurisdiktion entscheidet selbst" },
+			{ id: "unsure", label: "Noch zu früh / unklar" }
+		]
+	},
+	{
+		id: "vote11",
+		title: "Moralische Dilemmata",
+		question: "Bei Blockchain-Dilemmata (z.B. Zensur vs. Missbrauch) was wiegt für euch am meisten?",
+		chartType: "pie",
+		implemented: true,
+		options: [
+			{ id: "outcome", label: "On-Chain Nutzen & Adoption" },
+			{ id: "principles", label: "Code-Is-Law, keine Eingriffe" },
+			{ id: "empathy", label: "Opferschutz & Wiedergutmachung" },
+			{ id: "context", label: "Case-by-Case Forks/Pauses" }
+		]
+	},
+	{
+		id: "vote12",
+		title: "Verantwortung",
+		question: "Wer trägt die Hauptverantwortung für Schäden durch Blockchain-Anwendungen?",
+		chartType: "bar",
+		implemented: true,
+		options: [
+			{ id: "builder", label: "Core-Dev Teams & Auditoren" },
+			{ id: "validators", label: "Miner/Validatoren ihrer Chains" },
+			{ id: "company", label: "Protokoll- und Wallet-Anbieter" },
+			{ id: "regulator", label: "Staat & Aufsicht" }
+		]
+	},
+	{
+		id: "vote13",
+		title: "Vertrauen vs. Technik",
+		question:
+			"Kann Technik wie die Hash-Funktion menschliches Vertrauen ersetzen – oder braucht eine Gesellschaft mehr als nur sichere Algorithmen?",
+		chartType: "pie",
+		implemented: true,
+		options: [
+			{ id: "tech", label: "Ja, kryptographische Sicherheit reicht" },
+			{ id: "human", label: "Nein, wir brauchen soziale Institutionen" },
+			{ id: "both", label: "Wir brauchen beides" }
+		]
+	},
 	...Array.from({ length: 7 }).map((_, idx) => ({
 		id: `placeholder${idx + 4}`,
-		title: `Platzhalter ${idx + 4}`,
+		title: `Platzhalter ${idx + 4}`, 
 		question: "Thema folgt",
 		chartType: "pie",
 		implemented: false,

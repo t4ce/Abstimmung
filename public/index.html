@@ -12,7 +12,7 @@
     <header class="page-header">
       <div class="header-copy">
         <h1>Live-Abstimmung</h1>
-        <p>Gib deinen Namen ein, es folgen Vorgaben der Moderation.</p>
+        <p>Es folgen Vorgaben der Moderation.</p>
       </div>
       <p id="name-display" class="hint name-hint"></p>
     </header>
@@ -23,8 +23,7 @@
       <section class="panel" id="vote-panel">
         <div class="panel-head">
           <div class="panel-title">
-            <h2>Aktive Abstimmung</h2>
-            <p id="question-line" class="panel-subtitle"></p>
+            <h2 id="question-line" class="panel-caption">Noch keine Abstimmung ausgewaehlt.</h2>
           </div>
           <span id="status-pill" class="status-pill">wartet</span>
         </div>
@@ -43,41 +42,38 @@
       </section>
   
       <section class="panel hidden" id="admin-panel">
-        <details id="admin-details">
-          <summary>Adminbereich</summary>
-          <div id="admin-locked" class="admin-locked">
-            <p>Passwort</p>
-            <form id="admin-pass-form" class="row">
-              <input id="admin-password" type="password" placeholder="Passwort" autocomplete="off" />
-              <button type="submit">Freischalten</button>
-            </form>
-            <p id="admin-pass-hint" class="hint"></p>
+        <h2 class="admin-title">Adminbereich</h2>
+        <div id="admin-locked" class="admin-locked">
+          <form id="admin-pass-form" class="row">
+            <input id="admin-password" type="password" placeholder="Passwort" autocomplete="off" />
+            <button type="submit">Freischalten</button>
+          </form>
+          <p id="admin-pass-hint" class="hint"></p>
+        </div>
+        <div id="admin-controls" class="hidden">
+          <label for="topic-select">Abstimmung auswaehlen</label>
+          <select id="topic-select"></select>
+          <label for="visibility-select">Modus</label>
+          <select id="visibility-select">
+            <option value="private">Namen verborgen</option>
+            <option value="public">Namen sichtbar</option>
+          </select>
+          <div class="button-row">
+            <button id="start-btn">Starten</button>
+            <button id="stop-btn">Stoppen</button>
+            <button id="reset-btn">Zuruecksetzen</button>
           </div>
-          <div id="admin-controls" class="hidden">
-            <label for="topic-select">Abstimmung auswaehlen</label>
-            <select id="topic-select"></select>
-            <label for="visibility-select">Modus</label>
-            <select id="visibility-select">
-              <option value="private">Namen verborgen</option>
-              <option value="public">Namen sichtbar</option>
-            </select>
-            <div class="button-row">
-              <button id="start-btn">Starten</button>
-              <button id="stop-btn">Stoppen</button>
-              <button id="reset-btn">Zuruecksetzen</button>
-            </div>
-            <p class="hint"> Platzhalter-Themen deaktiviert.</p>
-          </div>
-        </details>
+          <p class="hint"> Platzhalter-Themen deaktiviert.</p>
+        </div>
       </section>
     </main>
 
     <button id="view-toggle-btn" class="floating-btn floating-btn-left icon-only-btn" type="button" aria-label="Adminbereich anzeigen"></button>
-    <button id="name-modal-open" class="floating-btn hidden" type="button">Name ändern</button>
+    <button id="name-modal-open" class="floating-btn hidden" type="button">Name</button>
 
     <div id="name-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">
-        <h2>Wie lautet bitte Ihr Vorname?</h2>
+        <h2>Wie lautet bitte Ihr Vorname:</h2>
         <form id="name-form">
           <input id="name-input" type="text" placeholder="Dein Name" autocomplete="off" />
           <div class="button-row modal-actions">

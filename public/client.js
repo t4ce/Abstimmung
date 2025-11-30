@@ -2,6 +2,8 @@ const CHART_COLORS = ["#1d4ed8", "#f97316", "#10b981", "#a855f7", "#0ea5e9", "#6
 const NAME_STORAGE_KEY = "abstimmungName";
 const ADMIN_PASSWORD = "abc";
 
+const SUPPORTED_CHART_TYPES = ["pie", "doughnut", "bar", "radar"];
+
 const nameForm = document.getElementById("name-form");
 const nameInput = document.getElementById("name-input");
 const nameDisplay = document.getElementById("name-display");
@@ -156,8 +158,20 @@ function updateState(payload) {
   }
   lastStateSignature = signature;
   currentState = payload;
+  pruneLocalSelections(payload);
   renderAdminControls();
   renderVoteSection();
+}
+
+function pruneLocalSelections(state) {
+  if (!state) {
+    return;
+  }
+  state.topics.forEach((topic) => {
+    if (topic.status === "idle" || topic.status === "disabled") {
+      localSelections.delete(topic.id);
+    }
+  });
 }
 
 function computeStateSignature(state) {
@@ -312,15 +326,11 @@ function renderAdminControls() {
 }
 
 function updateViewMode() {
-  if (adminView) {
-    votePanel.classList.add("hidden");
-    adminPanel.classList.remove("hidden");
-    viewToggleBtn.setAttribute("aria-label", "Zurueck zur Abstimmung");
-  } else {
-    votePanel.classList.remove("hidden");
-    adminPanel.classList.add("hidden");
-    viewToggleBtn.setAttribute("aria-label", "Adminbereich anzeigen");
-  }
+  adminPanel.classList.toggle("hidden", !adminView);
+  viewToggleBtn.setAttribute(
+    "aria-label",
+    adminView ? "Adminbereich ausblenden" : "Adminbereich anzeigen"
+  );
   viewToggleBtn.textContent = "";
 }
 
@@ -416,7 +426,6 @@ async function handleAdminUnlock(event) {
     adminControls.classList.remove("hidden");
     adminPassHint.textContent = "";
     adminPasswordInput.value = "";
-    adminDetails.open = true;
   } catch (error) {
     adminPassHint.textContent = "Verbindung fehlgeschlagen";
   }
@@ -474,50 +483,138 @@ function updateChart(topic) {
     destroyChart();
     return;
   }
+
   const labels = topic.options.map((option) => option.label);
   const data = topic.options.map((option) => topic.totals?.[option.id] || 0);
+  const colors = labels.map((_, index) => CHART_COLORS[index % CHART_COLORS.length]);
+  const chartType = resolveChartType(topic.chartType);
   const isCompact = window.matchMedia("(max-width: 640px)").matches;
-
-  destroyChart();
-  chartInstance = new Chart(chartCanvas, {
-    type: topic.chartType === "bar" ? "bar" : "pie",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Stimmen",
-          data,
-          backgroundColor: labels.map((_, index) => CHART_COLORS[index % CHART_COLORS.length]),
-          borderWidth: 1
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: {
-        padding: isCompact ? 8 : 16
-      },
-      plugins: {
-        legend: {
-          position: isCompact ? "bottom" : "right",
-          align: "center",
-          labels: {
-            boxWidth: isCompact ? 12 : 16,
-            boxHeight: isCompact ? 12 : 16,
-            color: "#0f172a",
-            font: {
-              size: isCompact ? 11 : 13
-            }
-          }
-        }
-      },
-      scales:
-        topic.chartType === "bar"
-          ? { y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 } } }
-          : {}
-    }
+  const legendPosition = isCompact ? "bottom" : "right";
+  const legendBoxSize = isCompact ? 12 : 16;
+  const legendFontSize = isCompact ? 11 : 13;
+  const layoutPadding = isCompact ? 8 : 16;
+  const optionsConfig = buildChartOptions(chartType, {
+    legendPosition,
+    legendBoxSize,
+    legendFontSize,
+    layoutPadding
   });
+  const datasetConfig = buildDatasetConfig(chartType, data, colors);
+
+  const requiresRebuild =
+    !chartInstance ||
+    chartInstance.config.type !== chartType ||
+    chartInstance.data.labels.length !== labels.length ||
+    chartInstance.data.labels.some((label, index) => label !== labels[index]);
+
+  if (requiresRebuild) {
+    destroyChart();
+    chartInstance = new Chart(chartCanvas, {
+      type: chartType,
+      data: {
+        labels,
+        datasets: [datasetConfig]
+      },
+      options: optionsConfig
+    });
+    return;
+  }
+
+  chartInstance.data.labels = labels;
+  const dataset = chartInstance.data.datasets[0];
+  Object.assign(dataset, datasetConfig, { data });
+  chartInstance.options = optionsConfig;
+  chartInstance.update();
+}
+
+function resolveChartType(requestedType) {
+  return SUPPORTED_CHART_TYPES.includes(requestedType) ? requestedType : "pie";
+}
+
+function buildChartOptions(chartType, { legendPosition, legendBoxSize, legendFontSize, layoutPadding }) {
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: layoutPadding },
+    plugins: {
+      legend: {
+        position: chartType === "radar" ? "bottom" : legendPosition,
+        align: "center",
+        labels: {
+          boxWidth: legendBoxSize,
+          boxHeight: legendBoxSize,
+          color: "#0f172a",
+          font: { size: legendFontSize }
+        }
+      }
+    }
+  };
+
+  if (chartType === "bar") {
+    options.scales = {
+      y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 } }
+    };
+  } else if (chartType === "radar") {
+    options.scales = {
+      r: {
+        beginAtZero: true,
+        ticks: { precision: 0, stepSize: 1 },
+        grid: { color: "#e2e8f0" },
+        angleLines: { color: "#e2e8f0" }
+      }
+    };
+  } else {
+    options.scales = {};
+  }
+
+  if (chartType === "doughnut") {
+    options.cutout = "55%";
+  }
+
+  return options;
+}
+
+function buildDatasetConfig(chartType, data, colors) {
+  if (chartType === "radar") {
+    const borderColor = colors[0] || CHART_COLORS[0];
+    return {
+      label: "Stimmen",
+      data,
+      backgroundColor: hexToRgba(borderColor, 0.15),
+      borderColor,
+      pointBackgroundColor: colors,
+      pointBorderColor: "#ffffff",
+      borderWidth: 2,
+      fill: true
+    };
+  }
+
+  const config = {
+    label: "Stimmen",
+    data,
+    backgroundColor: colors,
+    borderWidth: 1
+  };
+
+  if (chartType === "bar") {
+    config.borderRadius = 6;
+  }
+
+  return config;
+}
+
+function hexToRgba(hex, alpha) {
+  if (typeof hex !== "string") {
+    return `rgba(29, 78, 216, ${alpha})`;
+  }
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) {
+    return `rgba(29, 78, 216, ${alpha})`;
+  }
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function destroyChart() {
