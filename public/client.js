@@ -20,6 +20,8 @@ const viewToggleBtn = document.getElementById("view-toggle-btn");
 const votePanel = document.getElementById("vote-panel");
 const adminPanel = document.getElementById("admin-panel");
 const globalCountdown = document.getElementById("global-countdown");
+const closingOverlay = document.getElementById("closing-overlay");
+const closingOverlayNumber = document.getElementById("closing-overlay-number");
 const nameModal = document.getElementById("name-modal");
 const nameModalOpen = document.getElementById("name-modal-open");
 const nameCancelBtn = document.getElementById("name-cancel-btn");
@@ -427,6 +429,11 @@ function showCountdownMessage(topic) {
   voteNotice.innerHTML = message;
   globalCountdown.innerHTML = message;
   globalCountdown.classList.remove("hidden");
+  voteNotice.classList.add("countdown-message");
+  globalCountdown.classList.add("countdown-message");
+  if (closingOverlay) {
+    closingOverlay.classList.remove("hidden");
+  }
   updateCountdownDisplays(topic);
   startClosingTicker(topic);
 }
@@ -441,10 +448,12 @@ function getRemainingSeconds(topic) {
 
 function updateCountdownDisplays(topic) {
   const seconds = getRemainingSeconds(topic);
-  const spans = [voteNotice, globalCountdown]
-    .map((node) => node.querySelector(".countdown-number"))
-    .filter(Boolean);
-  spans.forEach((span) => {
+  const nodes = [
+    voteNotice.querySelector(".countdown-number"),
+    globalCountdown.querySelector(".countdown-number"),
+    closingOverlayNumber
+  ].filter(Boolean);
+  nodes.forEach((span) => {
     span.textContent = seconds;
   });
 }
@@ -473,6 +482,14 @@ function stopClosingTicker() {
   closingTopicId = null;
   globalCountdown.classList.add("hidden");
   globalCountdown.textContent = "";
+  voteNotice.classList.remove("countdown-message");
+  globalCountdown.classList.remove("countdown-message");
+  if (closingOverlay) {
+    closingOverlay.classList.add("hidden");
+  }
+  if (closingOverlayNumber) {
+    closingOverlayNumber.textContent = "";
+  }
 }
 
 function readStoredName() {
