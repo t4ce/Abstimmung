@@ -16,15 +16,15 @@ const topics = [
 	{
 		id: "vote1",
 		title: "Snacks to go",
-		question: "Ur Muchny 2go?",
+		question: "Lieblings Süßigkeit?",
 		chartType: "pie",
 		implemented: true,
 		options: [
 			{ id: "cake", label: "Kuchen" },
-			{ id: "ice", label: "Eis" },
-			{ id: "donut", label: "Donut" }
+			{ id: "ice", label: "Eiscreme" },
+			{ id: "donut", label: "Donut mit Perlen" }
 		]
-	},
+	},		
 	{
 		id: "vote2",
 		title: "Mehr direkte Demokratie",
@@ -61,6 +61,18 @@ const topics = [
 			{ id: "protocol", label: "Protokoll + Zustandsmaschine" },
 			{ id: "algorithm", label: "Algorithmus/Berechnung im Netz" },
 			{ id: "vm", label: "Virtueller Computer" }
+		]
+	},
+	{
+		id: "vote5",
+		title: "Oekobilanz Blockchain",
+		question: "Wie bewertet ihr die Oekobilanz von Blockchain?",
+		chartType: "pie",
+		implemented: true,
+		options: [
+			{ id: "regulate", label: "Wir muessen regulieren" },
+			{ id: "self", label: "Loest sich durch effizientere Ansaetze" },
+			{ id: "compare", label: "Vergleichbar zu Finanzsektor" }
 		]
 	},
 	...Array.from({ length: 7 }).map((_, idx) => ({

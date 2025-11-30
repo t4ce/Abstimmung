@@ -5,7 +5,7 @@ const ADMIN_PASSWORD = "abc";
 const nameForm = document.getElementById("name-form");
 const nameInput = document.getElementById("name-input");
 const nameDisplay = document.getElementById("name-display");
-const questionEl = document.getElementById("question");
+const questionLineEl = document.getElementById("question-line");
 const optionsForm = document.getElementById("options-form");
 const voteNotice = document.getElementById("vote-notice");
 const statusPill = document.getElementById("status-pill");
@@ -186,7 +186,7 @@ function computeStateSignature(state) {
 
 function renderVoteSection() {
   if (!currentState || !currentState.activeTopicId) {
-    questionEl.textContent = "Noch keine Abstimmung ausgewaehlt.";
+    questionLineEl.textContent = "Noch keine Abstimmung ausgewaehlt.";
     optionsForm.innerHTML = "";
     voteNotice.textContent = "Warten auf Start durch die Moderation.";
     updateStatusPill("", "status-idle");
@@ -197,12 +197,12 @@ function renderVoteSection() {
 
   const topic = currentState.topics.find((entry) => entry.id === currentState.activeTopicId);
   if (!topic) {
-    questionEl.textContent = "Thema nicht gefunden.";
+    questionLineEl.textContent = "Thema nicht gefunden.";
     clearNamesLegend();
     return;
   }
 
-  questionEl.textContent = topic.question;
+  questionLineEl.textContent = topic.question;
   const hasOptions = renderOptions(topic);
   renderNotice(topic, hasOptions);
   updateStatusPill(topic.status, `status-${topic.status}`);

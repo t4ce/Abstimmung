@@ -22,16 +22,24 @@
     <main class="layout">
       <section class="panel" id="vote-panel">
         <div class="panel-head">
-          <h2>Aktive Abstimmung</h2>
+          <div class="panel-title">
+            <h2>Aktive Abstimmung</h2>
+            <p id="question-line" class="panel-subtitle"></p>
+          </div>
           <span id="status-pill" class="status-pill">wartet</span>
         </div>
-        <div id="question"></div>
-        <form id="options-form" class="options"></form>
-        <p id="vote-notice" class="hint"></p>
-        <div class="chart-box">
-          <canvas id="results-chart"></canvas>
+        <div class="vote-grid">
+          <div class="vote-main">
+            <form id="options-form" class="options"></form>
+            <p id="vote-notice" class="hint"></p>
+          </div>
+          <div class="vote-chart">
+            <div class="chart-box">
+              <canvas id="results-chart"></canvas>
+            </div>
+            <div id="names-legend" class="names-legend hidden"></div>
+          </div>
         </div>
-        <div id="names-legend" class="names-legend hidden"></div>
       </section>
   
       <section class="panel hidden" id="admin-panel">
