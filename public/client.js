@@ -1,4 +1,3 @@
-const WS_PORT = Number(window.__WS_PORT || 3003);
 const CHART_COLORS = ["#1d4ed8", "#f97316", "#10b981", "#a855f7", "#0ea5e9", "#6366f1", "#ef4444"];
 const NAME_STORAGE_KEY = "abstimmungName";
 const ADMIN_PASSWORD = "abc";
@@ -44,7 +43,10 @@ let adminToken = null;
 let adminView = false;
 let closingTicker = null;
 let closingTopicId = null;
+let pollTimer = null;
 const localSelections = new Map();
+const POLL_INTERVAL_MS = 1000;
+let lastStateSignature = "";
 
 function init() {
   nameForm.addEventListener("submit", handleNameSubmit);
@@ -78,6 +80,7 @@ function init() {
   initializeName();
   fetchState();
   connectSocket();
+  startStatePolling();
   updateViewMode();
 }
 
@@ -96,7 +99,7 @@ function handleAdminUnauthorized(message) {
 
 function connectSocket() {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  socket = new WebSocket(`${protocol}://${window.location.hostname}:${WS_PORT}`);
+  socket = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
   socket.onmessage = (event) => {
     const msg = JSON.parse(event.data);
@@ -116,6 +119,24 @@ function scheduleReconnect() {
   reconnectTimer = setTimeout(connectSocket, 2000);
 }
 
+function startStatePolling() {
+  if (pollTimer) {
+    return;
+  }
+  pollTimer = setInterval(async () => {
+    try {
+      const response = await fetch("/api/state", { cache: "no-store" });
+      if (!response.ok) {
+        return;
+      }
+      const payload = await response.json();
+      updateState(payload);
+    } catch (error) {
+      // silently ignore; WebSocket should recover as well
+    }
+  }, POLL_INTERVAL_MS);
+}
+
 async function fetchState() {
   try {
     const response = await fetch("/api/state");
@@ -128,9 +149,39 @@ async function fetchState() {
 }
 
 function updateState(payload) {
+  const signature = computeStateSignature(payload);
+  if (signature === lastStateSignature) {
+    currentState = payload;
+    return;
+  }
+  lastStateSignature = signature;
   currentState = payload;
   renderAdminControls();
   renderVoteSection();
+}
+
+function computeStateSignature(state) {
+  if (!state) {
+    return "";
+  }
+  const simplified = {
+    activeTopicId: state.activeTopicId,
+    topics: state.topics.map((topic) => ({
+      id: topic.id,
+      status: topic.status,
+      visibility: topic.visibility,
+      closingEndsAt: topic.closingEndsAt,
+      chartType: topic.chartType,
+      question: topic.question,
+      options: topic.options.map((option) => ({
+        id: option.id,
+        label: option.label,
+        total: topic.totals?.[option.id] || 0,
+        names: (topic.names?.[option.id] || []).slice()
+      }))
+    }))
+  };
+  return JSON.stringify(simplified);
 }
 
 function renderVoteSection() {
@@ -425,6 +476,7 @@ function updateChart(topic) {
   }
   const labels = topic.options.map((option) => option.label);
   const data = topic.options.map((option) => topic.totals?.[option.id] || 0);
+  const isCompact = window.matchMedia("(max-width: 640px)").matches;
 
   destroyChart();
   chartInstance = new Chart(chartCanvas, {
@@ -443,6 +495,23 @@ function updateChart(topic) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: isCompact ? 8 : 16
+      },
+      plugins: {
+        legend: {
+          position: isCompact ? "bottom" : "right",
+          align: "center",
+          labels: {
+            boxWidth: isCompact ? 12 : 16,
+            boxHeight: isCompact ? 12 : 16,
+            color: "#0f172a",
+            font: {
+              size: isCompact ? 11 : 13
+            }
+          }
+        }
+      },
       scales:
         topic.chartType === "bar"
           ? { y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 } } }

@@ -1,12 +1,17 @@
 :root {
   font-family: "Segoe UI", Arial, sans-serif;
   color: #0f172a;
-  background: #f8fafc;
+  background: #eef2ff;
 }
 
 body {
   margin: 0;
-  padding: 0 1rem 2rem;
+  padding: 0.75rem 1rem 1.5rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, #eef2ff, #f8fafc);
 }
 
 h1,
@@ -16,18 +21,50 @@ h3 {
 }
 
 .page-header {
-  text-align: center;
-  padding: 1.5rem 0 0.5rem;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 0.9rem;
+  padding: 0.85rem 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
+}
+
+.header-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.header-copy h1 {
+  font-size: 1.35rem;
+}
+
+.header-copy p {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.8);
+  font-size: 0.95rem;
 }
 
 .name-hint {
-  font-weight: 600;
+  font-weight: 500;
   min-height: 1.2rem;
+  margin: 0;
+  text-align: right;
+  color: #ffffff;
+  font-size: 0.95rem;
 }
 
 .global-countdown {
   text-align: center;
-  margin-bottom: 1rem;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 1100px;
 }
 
 .countdown-message {
@@ -43,6 +80,12 @@ h3 {
   margin: 0 auto;
 }
 
+body > .layout {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
 .panel {
   background: #ffffff;
   border-radius: 0.6rem;
@@ -51,6 +94,7 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+  min-height: 0;
 }
 
 .hidden {
@@ -147,8 +191,26 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+
+#vote-panel {
+  min-height: 0;
+}
+
+#vote-panel .chart-box {
+  flex: 1;
+  min-height: 220px;
+  max-height: calc(100vh - 320px);
+  width: 100%;
+}
+
 .chart-box {
-  min-height: 260px;
+  min-height: clamp(200px, 40vw, 360px);
+  width: 100%;
+}
+
+.chart-box canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .names-legend {
@@ -332,6 +394,19 @@ button:disabled {
 }
 
 @media (max-width: 720px) {
+  body {
+    padding: 0.5rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .name-hint {
+    text-align: left;
+  }
+
   .panel {
     padding: 1rem;
   }

@@ -1,10 +1,10 @@
 const path = require("path");
+const http = require("http");
 const crypto = require("crypto");
 const express = require("express");
 const WebSocket = require("ws");
 
 const HTTP_PORT = Number(process.env.HTTP_PORT) || 3002;
-const WS_PORT = Number(process.env.WS_PORT) || 3003;
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "abc";
 
@@ -47,6 +47,20 @@ const topics = [
 			{ id: "orbit", label: "Orbit Allianz" },
 			{ id: "flux", label: "Flux Bewegung" },
 			{ id: "pulse", label: "Puls Forum" }
+		]
+	},
+	{
+		id: "vote4",
+		title: "Ethereum Acronym",
+		question: "Wofuer steht Ethereum eurer Meinung nach?",
+		chartType: "pie",
+		implemented: true,
+		options: [
+			{ id: "money", label: "Digitales Geld/Waehrung" },
+			{ id: "security", label: "Sicherheitsschicht" },
+			{ id: "protocol", label: "Protokoll + Zustandsmaschine" },
+			{ id: "algorithm", label: "Algorithmus/Berechnung im Netz" },
+			{ id: "vm", label: "Virtueller Computer" }
 		]
 	},
 	...Array.from({ length: 7 }).map((_, idx) => ({
@@ -106,7 +120,8 @@ function ensureAdmin(req, res) {
 	return true;
 }
 
-const wss = new WebSocket.Server({ port: WS_PORT });
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server, path: "/ws" });
 const sockets = new Set();
 
 wss.on("connection", (socket) => {
@@ -408,10 +423,8 @@ app.use((req, res) => {
 	res.status(404).json({ message: "Route nicht gefunden" });
 });
 
-app.listen(HTTP_PORT, () => {
-	console.log(`HTTP Server auf Port ${HTTP_PORT}`);
+server.listen(HTTP_PORT, () => {
+	console.log(`Server hoert auf Port ${HTTP_PORT}`);
 });
-
-console.log(`WebSocket Server auf Port ${WS_PORT}`);
 
  
