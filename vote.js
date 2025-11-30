@@ -1,14 +1,17 @@
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const WebSocket = require("ws");
 
-const HTTP_PORT = Number(process.env.HTTP_PORT) || 30000;
-const WS_PORT = Number(process.env.WS_PORT) || 30003;
+const HTTP_PORT = Number(process.env.HTTP_PORT) || 3002;
+const WS_PORT = Number(process.env.WS_PORT) || 3003;
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "abc";
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
-
+ 
 const topics = [
 	{
 		id: "vote1",
@@ -69,6 +72,39 @@ topics.forEach((topic) => {
 });
 
 let activeTopicId = null;
+const adminSessions = new Map();
+
+function createAdminSession() {
+
+	const token = crypto.randomBytes(24).toString("hex");
+	const expiresAt = Date.now() + 60 * 60 * 1000;
+	adminSessions.set(token, expiresAt);
+	return { token, expiresAt };
+}
+
+function validateAdminToken(token) {
+	if (!token) {
+		return false;
+	}
+	const expiresAt = adminSessions.get(token);
+	if (!expiresAt) {
+		return false;
+	}
+	if (expiresAt < Date.now()) {
+		adminSessions.delete(token);
+		return false;
+	}
+	return true;
+}
+
+function ensureAdmin(req, res) {
+	const token = req.get("x-admin-token");
+	if (!validateAdminToken(token)) {
+		res.status(401).json({ message: "Admin nicht angemeldet" });
+		return false;
+	}
+	return true;
+}
 
 const wss = new WebSocket.Server({ port: WS_PORT });
 const sockets = new Set();
@@ -228,8 +264,25 @@ app.post("/api/vote", (req, res) => {
 	return res.json({ message: "Stimme gespeichert" });
 });
 
+app.post("/api/admin/login", (req, res) => {
+	const { password } = req.body || {};
+	if (!password || password !== ADMIN_PASSWORD) {
+		return res.status(401).json({ message: "Falsches Passwort" });
+	}
+	const session = createAdminSession();
+	return res.json(session);
+});
+
 app.post("/api/admin/topic", (req, res) => {
+	if (!ensureAdmin(req, res)) {
+		return;
+	}
 	const { topicId } = req.body || {};
+	const currentRecord = activeTopicId ? getTopicRecord(activeTopicId) : null;
+	const voteRunning = currentRecord && ["open", "closing"].includes(currentRecord.status);
+	if (voteRunning && topicId !== activeTopicId) {
+		return res.status(400).json({ message: "Abstimmung laeuft. Bitte zuerst stoppen." });
+	}
 
 	if (!topicId) {
 		activeTopicId = null;
@@ -252,7 +305,10 @@ app.post("/api/admin/topic", (req, res) => {
 	return res.json({ message: "Aktive Abstimmung gesetzt" });
 });
 
-app.post("/api/admin/start", (_req, res) => {
+app.post("/api/admin/start", (req, res) => {
+	if (!ensureAdmin(req, res)) {
+		return;
+	}
 	if (!activeTopicId) {
 		return res.status(400).json({ message: "Kein Thema ausgewaehlt" });
 	}
@@ -280,7 +336,10 @@ app.post("/api/admin/start", (_req, res) => {
 	return res.json({ message: "Abstimmung gestartet" });
 });
 
-app.post("/api/admin/stop", (_req, res) => {
+app.post("/api/admin/stop", (req, res) => {
+	if (!ensureAdmin(req, res)) {
+		return;
+	}
 	if (!activeTopicId) {
 		return res.status(400).json({ message: "Kein Thema ausgewaehlt" });
 	}
@@ -296,7 +355,10 @@ app.post("/api/admin/stop", (_req, res) => {
 	return res.json({ message: "Abstimmung schliesst" });
 });
 
-app.post("/api/admin/reset", (_req, res) => {
+app.post("/api/admin/reset", (req, res) => {
+	if (!ensureAdmin(req, res)) {
+		return;
+	}
 	if (!activeTopicId) {
 		return res.status(400).json({ message: "Kein Thema ausgewaehlt" });
 	}
@@ -314,11 +376,15 @@ app.post("/api/admin/reset", (_req, res) => {
 	record.status = "idle";
 	record.visibility = "private";
 	clearClosingTimer(activeTopicId);
+	activeTopicId = null;
 	broadcastState();
 	return res.json({ message: "Abstimmung zurueckgesetzt" });
-});
+}); 
 
 app.post("/api/admin/visibility", (req, res) => {
+	if (!ensureAdmin(req, res)) {
+		return;
+	}
 	const { mode } = req.body || {};
 	if (!activeTopicId) {
 		return res.status(400).json({ message: "Kein Thema ausgewaehlt" });
@@ -348,3 +414,4 @@ app.listen(HTTP_PORT, () => {
 
 console.log(`WebSocket Server auf Port ${WS_PORT}`);
 
+ 

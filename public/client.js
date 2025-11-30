@@ -1,4 +1,5 @@
-const WS_PORT = 30003;
+const WS_PORT = Number(window.__WS_PORT || 3003);
+const CHART_COLORS = ["#1d4ed8", "#f97316", "#10b981", "#a855f7", "#0ea5e9", "#6366f1", "#ef4444"];
 const NAME_STORAGE_KEY = "abstimmungName";
 const ADMIN_PASSWORD = "abc";
 
@@ -16,6 +17,7 @@ const stopBtn = document.getElementById("stop-btn");
 const resetBtn = document.getElementById("reset-btn");
 const optionTemplate = document.getElementById("option-template");
 const chartCanvas = document.getElementById("results-chart");
+const namesLegend = document.getElementById("names-legend");
 const viewToggleBtn = document.getElementById("view-toggle-btn");
 const votePanel = document.getElementById("vote-panel");
 const adminPanel = document.getElementById("admin-panel");
@@ -38,6 +40,7 @@ let reconnectTimer;
 let chartInstance;
 let currentState;
 let adminUnlocked = false;
+let adminToken = null;
 let adminView = false;
 let closingTicker = null;
 let closingTopicId = null;
@@ -61,21 +64,34 @@ function init() {
   });
 
   topicSelect.addEventListener("change", () => {
-    postJson("/api/admin/topic", { topicId: topicSelect.value || null });
+    postJson("/api/admin/topic", { topicId: topicSelect.value || null }, { requireAdmin: true });
   });
 
   visibilitySelect.addEventListener("change", () => {
-    postJson("/api/admin/visibility", { mode: visibilitySelect.value });
+    postJson("/api/admin/visibility", { mode: visibilitySelect.value }, { requireAdmin: true });
   });
 
-  startBtn.addEventListener("click", () => postJson("/api/admin/start"));
-  stopBtn.addEventListener("click", () => postJson("/api/admin/stop"));
-  resetBtn.addEventListener("click", () => postJson("/api/admin/reset"));
+  startBtn.addEventListener("click", () => postJson("/api/admin/start", null, { requireAdmin: true }));
+  stopBtn.addEventListener("click", () => postJson("/api/admin/stop", null, { requireAdmin: true }));
+  resetBtn.addEventListener("click", () => postJson("/api/admin/reset", null, { requireAdmin: true }));
 
   initializeName();
   fetchState();
   connectSocket();
   updateViewMode();
+}
+
+function setNameCancelEnabled(enabled) {
+  nameCancelBtn.disabled = !enabled;
+  nameCancelBtn.classList.toggle("hidden", !enabled);
+}
+
+function handleAdminUnauthorized(message) {
+  adminUnlocked = false;
+  adminToken = null;
+  adminControls.classList.add("hidden");
+  adminLocked.classList.remove("hidden");
+  adminPassHint.textContent = message || "Session abgelaufen. Bitte erneut anmelden.";
 }
 
 function connectSocket() {
@@ -131,6 +147,7 @@ function renderVoteSection() {
   const topic = currentState.topics.find((entry) => entry.id === currentState.activeTopicId);
   if (!topic) {
     questionEl.textContent = "Thema nicht gefunden.";
+    clearNamesLegend();
     return;
   }
 
@@ -139,6 +156,7 @@ function renderVoteSection() {
   renderNotice(topic, hasOptions);
   updateStatusPill(topic.status, `status-${topic.status}`);
   updateChart(topic);
+  renderNamesLegend(topic);
 }
 
 function renderOptions(topic) {
@@ -233,6 +251,8 @@ function renderAdminControls() {
 
   const active = currentState.topics.find((t) => t.id === currentState.activeTopicId);
   const status = active?.status || "disabled";
+  const running = ["open", "closing"].includes(status);
+  topicSelect.disabled = running;
   startBtn.disabled = !active || status !== "idle";
   stopBtn.disabled = !active || status !== "open";
   resetBtn.disabled = !active || status === "disabled";
@@ -244,12 +264,13 @@ function updateViewMode() {
   if (adminView) {
     votePanel.classList.add("hidden");
     adminPanel.classList.remove("hidden");
-    viewToggleBtn.textContent = "Zurueck zur Abstimmung";
+    viewToggleBtn.setAttribute("aria-label", "Zurueck zur Abstimmung");
   } else {
     votePanel.classList.remove("hidden");
     adminPanel.classList.add("hidden");
-    viewToggleBtn.textContent = "Adminbereich anzeigen";
+    viewToggleBtn.setAttribute("aria-label", "Adminbereich anzeigen");
   }
+  viewToggleBtn.textContent = "";
 }
 
 function handleNameSubmit(event) {
@@ -287,9 +308,11 @@ function initializeName() {
     updateNameBadge();
     nameModalOpen.classList.remove("hidden");
     nameInput.value = stored;
+    setNameCancelEnabled(true);
   } else {
     updateNameBadge();
     nameModalOpen.classList.add("hidden");
+    setNameCancelEnabled(false);
     openNameModal();
   }
 }
@@ -299,6 +322,7 @@ function setVoterName(value) {
   storeName(voterName);
   updateNameBadge();
   nameModalOpen.classList.remove("hidden");
+  setNameCancelEnabled(true);
   closeNameModal();
   renderVoteSection();
 }
@@ -311,23 +335,39 @@ function updateNameBadge() {
   }
 }
 
-function handleAdminUnlock(event) {
+async function handleAdminUnlock(event) {
   event.preventDefault();
   if (adminUnlocked) {
     return;
   }
   const value = adminPasswordInput.value.trim();
-  if (value === ADMIN_PASSWORD) {
+  if (!value) {
+    adminPassHint.textContent = "Passwort erforderlich";
+    adminPasswordInput.focus();
+    return;
+  }
+  try {
+    const response = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: value })
+    });
+    if (!response.ok) {
+      adminPassHint.textContent = "Falsches Passwort";
+      adminPasswordInput.value = "";
+      adminPasswordInput.focus();
+      return;
+    }
+    const data = await response.json();
+    adminToken = data.token;
     adminUnlocked = true;
     adminLocked.classList.add("hidden");
     adminControls.classList.remove("hidden");
     adminPassHint.textContent = "";
     adminPasswordInput.value = "";
     adminDetails.open = true;
-  } else {
-    adminPassHint.textContent = "Falsches Passwort";
-    adminPasswordInput.value = "";
-    adminPasswordInput.focus();
+  } catch (error) {
+    adminPassHint.textContent = "Verbindung fehlgeschlagen";
   }
 }
 
@@ -350,13 +390,25 @@ async function submitVote(topicId, optionId) {
   }
 }
 
-async function postJson(url, body) {
+async function postJson(url, body, { requireAdmin = false } = {}) {
   try {
+    if (requireAdmin && !adminToken) {
+      handleAdminUnauthorized("Session erforderlich. Bitte erneut anmelden.");
+      return;
+    }
+    const headers = { "Content-Type": "application/json" };
+    if (requireAdmin && adminToken) {
+      headers["X-Admin-Token"] = adminToken;
+    }
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body || {})
     });
+    if (response.status === 401) {
+      handleAdminUnauthorized("Session abgelaufen. Bitte erneut anmelden.");
+      return;
+    }
     if (!response.ok) {
       const payload = await response.json().catch(() => ({ message: "Fehler" }));
       console.warn(payload.message || "Aktion fehlgeschlagen");
@@ -371,17 +423,8 @@ function updateChart(topic) {
     destroyChart();
     return;
   }
-  const labels = topic.options.map((option) => decorateLabel(option, topic));
+  const labels = topic.options.map((option) => option.label);
   const data = topic.options.map((option) => topic.totals?.[option.id] || 0);
-  const palette = [
-    "#1d4ed8",
-    "#f97316",
-    "#10b981",
-    "#a855f7",
-    "#0ea5e9",
-    "#6366f1",
-    "#ef4444"
-  ];
 
   destroyChart();
   chartInstance = new Chart(chartCanvas, {
@@ -392,7 +435,7 @@ function updateChart(topic) {
         {
           label: "Stimmen",
           data,
-          backgroundColor: labels.map((_, index) => palette[index % palette.length]),
+          backgroundColor: labels.map((_, index) => CHART_COLORS[index % CHART_COLORS.length]),
           borderWidth: 1
         }
       ]
@@ -415,13 +458,57 @@ function destroyChart() {
   }
 }
 
-function decorateLabel(option, topic) {
-  const names = topic.names?.[option.id] || [];
-  if (topic.visibility === "public" && names.length) {
-    const labelText = names.join(", ");
-    return [option.label, labelText];
+function clearNamesLegend() {
+  if (namesLegend) {
+    namesLegend.innerHTML = "";
+    namesLegend.classList.add("hidden");
   }
-  return option.label;
+}
+
+function renderNamesLegend(topic) {
+  if (!namesLegend) {
+    return;
+  }
+  const isPublic = topic.visibility === "public";
+  const hasNames = topic.options.some((option) => (topic.names?.[option.id] || []).length);
+  if (!isPublic || !hasNames) {
+    clearNamesLegend();
+    return;
+  }
+
+  namesLegend.innerHTML = "";
+  topic.options.forEach((option, index) => {
+    const names = topic.names?.[option.id] || [];
+    if (!names.length) {
+      return;
+    }
+    const row = document.createElement("div");
+    row.className = "names-legend-row";
+
+    const indicator = document.createElement("span");
+    indicator.className = "names-legend-indicator";
+    indicator.style.backgroundColor = CHART_COLORS[index % CHART_COLORS.length];
+
+    const textWrapper = document.createElement("div");
+    textWrapper.className = "names-legend-text";
+
+    const labelEl = document.createElement("div");
+    labelEl.className = "names-legend-label";
+    labelEl.textContent = option.label;
+
+    const namesEl = document.createElement("div");
+    namesEl.className = "names-legend-names";
+    namesEl.textContent = names.join(", ");
+
+    textWrapper.appendChild(labelEl);
+    textWrapper.appendChild(namesEl);
+
+    row.appendChild(indicator);
+    row.appendChild(textWrapper);
+    namesLegend.appendChild(row);
+  });
+
+  namesLegend.classList.toggle("hidden", !namesLegend.childElementCount);
 }
 
 function showCountdownMessage(topic) {

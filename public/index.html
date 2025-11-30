@@ -29,8 +29,9 @@
         <div class="chart-box">
           <canvas id="results-chart"></canvas>
         </div>
+        <div id="names-legend" class="names-legend hidden"></div>
       </section>
-
+  
       <section class="panel hidden" id="admin-panel">
         <details id="admin-details">
           <summary>Adminbereich</summary>
@@ -47,26 +48,26 @@
             <select id="topic-select"></select>
             <label for="visibility-select">Modus</label>
             <select id="visibility-select">
-              <option value="private">Privat (Namen verborgen)</option>
-              <option value="public">Oeffentlich (Namen sichtbar)</option>
+              <option value="private">Namen verborgen</option>
+              <option value="public">Namen sichtbar</option>
             </select>
             <div class="button-row">
               <button id="start-btn">Starten</button>
               <button id="stop-btn">Stoppen</button>
               <button id="reset-btn">Zuruecksetzen</button>
             </div>
-            <p class="hint">Hinweis: Platzhalter-Themen sind deaktiviert.</p>
+            <p class="hint"> Platzhalter-Themen deaktiviert.</p>
           </div>
         </details>
       </section>
     </main>
 
-    <button id="view-toggle-btn" class="floating-btn floating-btn-left" type="button">Adminbereich anzeigen</button>
-    <button id="name-modal-open" class="floating-btn hidden" type="button">Name aendern</button>
+    <button id="view-toggle-btn" class="floating-btn floating-btn-left icon-only-btn" type="button" aria-label="Adminbereich anzeigen"></button>
+    <button id="name-modal-open" class="floating-btn hidden" type="button">Name ändern</button>
 
     <div id="name-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">
-        <h2>Wie moechtest du genannt werden?</h2>
+        <h2>Wie lautet bitte Ihr Vorname?</h2>
         <form id="name-form">
           <input id="name-input" type="text" placeholder="Dein Name" autocomplete="off" />
           <div class="button-row modal-actions">

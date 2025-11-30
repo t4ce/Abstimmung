@@ -151,6 +151,44 @@ button:disabled {
   min-height: 260px;
 }
 
+.names-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.95rem;
+}
+
+.names-legend-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.names-legend-indicator {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0.2rem;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.names-legend-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.names-legend-label {
+  font-weight: 600;
+}
+
+.names-legend-names {
+  color: #475569;
+  word-break: break-word;
+}
+
 .hint {
   color: #475569;
   font-size: 0.9rem;
@@ -196,7 +234,13 @@ button:disabled {
 }
 
 .modal-actions {
-  justify-content: flex-end;
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+.modal-actions button {
+  min-width: 120px;
 }
 
 .floating-btn {
@@ -211,6 +255,21 @@ button:disabled {
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
   cursor: pointer;
   z-index: 900;
+}
+
+.icon-only-btn {
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only-btn::before {
+  content: "\2699";
+  font-size: 1.4rem;
+  line-height: 1;
 }
 
 .floating-btn:disabled {
