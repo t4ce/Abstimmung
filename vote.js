@@ -374,7 +374,12 @@ app.post("/api/vote", (req, res) => {
 	const activeTopic = topics.find((topic) => topic.id === topicId);
 	const record = getTopicRecord(topicId);
 
-	if (!activeTopic || !activeTopic.implemented || !record || record.status !== "open") {
+	if (
+		!activeTopic ||
+		!activeTopic.implemented ||
+		!record ||
+		!["open", "closing"].includes(record.status)
+	) {
 		return res.status(400).json({ message: "Abstimmung nicht geoeffnet" });
 	}
 

@@ -1,5 +1,6 @@
 const CHART_COLORS = ["#1d4ed8", "#f97316", "#10b981", "#a855f7", "#0ea5e9", "#6366f1", "#ef4444"];
 const NAME_STORAGE_KEY = "abstimmungName";
+const ADMIN_TOKEN_STORAGE_KEY = "abstimmungAdminToken";
 const ADMIN_PASSWORD = "abc";
 
 const SUPPORTED_CHART_TYPES = ["pie", "doughnut", "bar", "radar"];
@@ -22,9 +23,7 @@ const namesLegend = document.getElementById("names-legend");
 const viewToggleBtn = document.getElementById("view-toggle-btn");
 const votePanel = document.getElementById("vote-panel");
 const adminPanel = document.getElementById("admin-panel");
-const globalCountdown = document.getElementById("global-countdown");
-const closingOverlay = document.getElementById("closing-overlay");
-const closingOverlayNumber = document.getElementById("closing-overlay-number");
+const closingHint = document.getElementById("closing-hint");
 const nameModal = document.getElementById("name-modal");
 const nameModalOpen = document.getElementById("name-modal-open");
 const nameCancelBtn = document.getElementById("name-cancel-btn");
@@ -43,12 +42,15 @@ let currentState;
 let adminUnlocked = false;
 let adminToken = null;
 let adminView = false;
-let closingTicker = null;
-let closingTopicId = null;
 let pollTimer = null;
+let pollInFlight = false;
 const localSelections = new Map();
-const POLL_INTERVAL_MS = 1000;
+const POLL_INTERVAL_MS = 500;
 let lastStateSignature = "";
+let closingHintTimer = null;
+let closingHintTopicId = null;
+let closingHintDeadline = 0;
+const CLOSING_HINT_DURATION_MS = 5000;
 
 function init() {
   nameForm.addEventListener("submit", handleNameSubmit);
@@ -68,18 +70,33 @@ function init() {
   });
 
   topicSelect.addEventListener("change", () => {
-    postJson("/api/admin/topic", { topicId: topicSelect.value || null }, { requireAdmin: true });
+    postJson(
+      "/api/admin/topic",
+      { topicId: topicSelect.value || null },
+      { requireAdmin: true, refreshOnSuccess: true }
+    );
   });
 
   visibilitySelect.addEventListener("change", () => {
-    postJson("/api/admin/visibility", { mode: visibilitySelect.value }, { requireAdmin: true });
+    postJson(
+      "/api/admin/visibility",
+      { mode: visibilitySelect.value },
+      { requireAdmin: true, refreshOnSuccess: true }
+    );
   });
 
-  startBtn.addEventListener("click", () => postJson("/api/admin/start", null, { requireAdmin: true }));
-  stopBtn.addEventListener("click", () => postJson("/api/admin/stop", null, { requireAdmin: true }));
-  resetBtn.addEventListener("click", () => postJson("/api/admin/reset", null, { requireAdmin: true }));
+  startBtn.addEventListener("click", () =>
+    postJson("/api/admin/start", null, { requireAdmin: true, refreshOnSuccess: true })
+  );
+  stopBtn.addEventListener("click", () =>
+    postJson("/api/admin/stop", null, { requireAdmin: true, refreshOnSuccess: true })
+  );
+  resetBtn.addEventListener("click", () =>
+    postJson("/api/admin/reset", null, { requireAdmin: true, refreshOnSuccess: true })
+  );
 
   initializeName();
+  initializeAdminState();
   fetchState();
   connectSocket();
   startStatePolling();
@@ -94,6 +111,7 @@ function setNameCancelEnabled(enabled) {
 function handleAdminUnauthorized(message) {
   adminUnlocked = false;
   adminToken = null;
+  clearStoredAdminToken();
   adminControls.classList.add("hidden");
   adminLocked.classList.remove("hidden");
   adminPassHint.textContent = message || "Session abgelaufen. Bitte erneut anmelden.";
@@ -125,18 +143,26 @@ function startStatePolling() {
   if (pollTimer) {
     return;
   }
-  pollTimer = setInterval(async () => {
-    try {
-      const response = await fetch("/api/state", { cache: "no-store" });
-      if (!response.ok) {
-        return;
-      }
-      const payload = await response.json();
-      updateState(payload);
-    } catch (error) {
-      // silently ignore; WebSocket should recover as well
+  pollTimer = setInterval(pollState, POLL_INTERVAL_MS);
+}
+
+async function pollState() {
+  if (pollInFlight) {
+    return;
+  }
+  pollInFlight = true;
+  try {
+    const response = await fetch("/api/state", { cache: "no-store" });
+    if (!response.ok) {
+      return;
     }
-  }, POLL_INTERVAL_MS);
+    const payload = await response.json();
+    updateState(payload);
+  } catch (error) {
+    // silently ignore; WebSocket should recover as well
+  } finally {
+    pollInFlight = false;
+  }
 }
 
 async function fetchState() {
@@ -204,7 +230,7 @@ function renderVoteSection() {
     optionsForm.innerHTML = "";
     voteNotice.textContent = "Warten auf Start durch die Moderation.";
     updateStatusPill("", "status-idle");
-    stopClosingTicker();
+    stopClosingHint();
     destroyChart();
     return;
   }
@@ -230,7 +256,9 @@ function renderOptions(topic) {
     return false;
   }
 
-  const canVote = Boolean(voterName) && topic.status === "open";
+  syncLocalSelection(topic);
+
+  const canVote = Boolean(voterName) && ["open", "closing"].includes(topic.status);
   topic.options.forEach((option) => {
     const node = optionTemplate.content.cloneNode(true);
     const label = node.querySelector("label");
@@ -256,30 +284,31 @@ function renderOptions(topic) {
 function renderNotice(topic, hasOptions) {
   if (!hasOptions) {
     voteNotice.textContent = "Dieses Thema ist noch in Vorbereitung.";
-    stopClosingTicker();
+    stopClosingHint();
     return;
   }
   if (!voterName) {
     voteNotice.textContent = 'Bitte zuerst unten rechts auf "Name aendern" klicken.';
-    stopClosingTicker();
+    stopClosingHint();
     return;
   }
   if (topic.status === "idle") {
     voteNotice.textContent = "Warten auf Start durch die Moderation.";
-    stopClosingTicker();
+    stopClosingHint();
     return;
   }
   if (topic.status === "closing") {
-    showCountdownMessage(topic);
+    voteNotice.textContent = "Abstimmung endet gleich. Du kannst bis zum Ablauf noch wechseln.";
+    startClosingHint(topic.id);
     return;
   }
   if (topic.status === "closed") {
     voteNotice.textContent = "Abstimmung wurde beendet. Ergebnis bleibt sichtbar.";
-    stopClosingTicker();
+    stopClosingHint();
     return;
   }
   voteNotice.textContent = "Du kannst jederzeit eine andere Option waehlen.";
-  stopClosingTicker();
+  stopClosingHint();
 }
 
 function updateStatusPill(status, className) {
@@ -426,6 +455,7 @@ async function handleAdminUnlock(event) {
     adminControls.classList.remove("hidden");
     adminPassHint.textContent = "";
     adminPasswordInput.value = "";
+    storeAdminToken(adminToken);
   } catch (error) {
     adminPassHint.textContent = "Verbindung fehlgeschlagen";
   }
@@ -450,7 +480,7 @@ async function submitVote(topicId, optionId) {
   }
 }
 
-async function postJson(url, body, { requireAdmin = false } = {}) {
+async function postJson(url, body, { requireAdmin = false, refreshOnSuccess = false } = {}) {
   try {
     if (requireAdmin && !adminToken) {
       handleAdminUnauthorized("Session erforderlich. Bitte erneut anmelden.");
@@ -472,6 +502,10 @@ async function postJson(url, body, { requireAdmin = false } = {}) {
     if (!response.ok) {
       const payload = await response.json().catch(() => ({ message: "Fehler" }));
       console.warn(payload.message || "Aktion fehlgeschlagen");
+      return;
+    }
+    if (refreshOnSuccess) {
+      fetchState();
     }
   } catch (error) {
     console.error("Aktion fehlgeschlagen", error);
@@ -677,74 +711,6 @@ function renderNamesLegend(topic) {
   namesLegend.classList.toggle("hidden", !namesLegend.childElementCount);
 }
 
-function showCountdownMessage(topic) {
-  const message = 'Abstimmung endet in <span class="countdown-number"></span> Sekunden...';
-  voteNotice.innerHTML = message;
-  globalCountdown.innerHTML = message;
-  globalCountdown.classList.remove("hidden");
-  voteNotice.classList.add("countdown-message");
-  globalCountdown.classList.add("countdown-message");
-  if (closingOverlay) {
-    closingOverlay.classList.remove("hidden");
-  }
-  updateCountdownDisplays(topic);
-  startClosingTicker(topic);
-}
-
-function getRemainingSeconds(topic) {
-  if (!topic.closingEndsAt) {
-    return 0;
-  }
-  const diff = Math.max(0, topic.closingEndsAt - Date.now());
-  return Math.ceil(diff / 1000);
-}
-
-function updateCountdownDisplays(topic) {
-  const seconds = getRemainingSeconds(topic);
-  const nodes = [
-    voteNotice.querySelector(".countdown-number"),
-    globalCountdown.querySelector(".countdown-number"),
-    closingOverlayNumber
-  ].filter(Boolean);
-  nodes.forEach((span) => {
-    span.textContent = seconds;
-  });
-}
-
-function startClosingTicker(topic) {
-  if (closingTicker && closingTopicId === topic.id) {
-    return;
-  }
-  stopClosingTicker();
-  closingTopicId = topic.id;
-  closingTicker = setInterval(() => {
-    const updatedTopic = currentState?.topics.find((entry) => entry.id === closingTopicId);
-    if (!updatedTopic || updatedTopic.status !== "closing") {
-      stopClosingTicker();
-      return;
-    }
-    updateCountdownDisplays(updatedTopic);
-  }, 250);
-}
-
-function stopClosingTicker() {
-  if (closingTicker) {
-    clearInterval(closingTicker);
-    closingTicker = null;
-  }
-  closingTopicId = null;
-  globalCountdown.classList.add("hidden");
-  globalCountdown.textContent = "";
-  voteNotice.classList.remove("countdown-message");
-  globalCountdown.classList.remove("countdown-message");
-  if (closingOverlay) {
-    closingOverlay.classList.add("hidden");
-  }
-  if (closingOverlayNumber) {
-    closingOverlayNumber.textContent = "";
-  }
-}
-
 function readStoredName() {
   try {
     return sessionStorage.getItem(NAME_STORAGE_KEY) || "";
@@ -758,6 +724,89 @@ function storeName(value) {
     sessionStorage.setItem(NAME_STORAGE_KEY, value);
   } catch (error) {
     // Storage ggf. deaktiviert
+  }
+}
+
+function initializeAdminState() {
+  const storedToken = readStoredAdminToken();
+  if (!storedToken) {
+    return;
+  }
+  adminToken = storedToken;
+  adminUnlocked = true;
+  adminLocked.classList.add("hidden");
+  adminControls.classList.remove("hidden");
+}
+
+function readStoredAdminToken() {
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+  } catch (error) {
+    return null;
+  }
+}
+
+function storeAdminToken(token) {
+  try {
+    if (token) {
+      sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
+    } else {
+      sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+    }
+  } catch (error) {
+    // Storage ggf. deaktiviert
+  }
+}
+
+function clearStoredAdminToken() {
+  storeAdminToken(null);
+}
+
+function syncLocalSelection(topic) {
+  const currentSelection = localSelections.get(topic.id);
+  if (currentSelection === undefined) {
+    return;
+  }
+  const optionStillExists = topic.options.some((option) => option.id === currentSelection);
+  const shouldClear = !optionStillExists || ["idle", "disabled"].includes(topic.status);
+  if (shouldClear) {
+    localSelections.delete(topic.id);
+  }
+}
+
+function startClosingHint(topicId) {
+  if (closingHintTimer && closingHintTopicId === topicId) {
+    return;
+  }
+  stopClosingHint();
+  closingHintTopicId = topicId;
+  closingHintDeadline = Date.now() + CLOSING_HINT_DURATION_MS;
+  updateClosingHintMessage();
+  closingHintTimer = setInterval(updateClosingHintMessage, 250);
+}
+
+function updateClosingHintMessage() {
+  const remainingMs = Math.max(0, closingHintDeadline - Date.now());
+  const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  if (closingHint) {
+    closingHint.textContent = `Noch ${remainingSeconds}s`;
+    closingHint.classList.remove("hidden");
+  }
+  if (remainingMs <= 0) {
+    stopClosingHint();
+  }
+}
+
+function stopClosingHint() {
+  if (closingHintTimer) {
+    clearInterval(closingHintTimer);
+    closingHintTimer = null;
+  }
+  closingHintTopicId = null;
+  closingHintDeadline = 0;
+  if (closingHint) {
+    closingHint.classList.add("hidden");
+    closingHint.textContent = "";
   }
 }
 

@@ -17,8 +17,6 @@
       <p id="name-display" class="hint name-hint"></p>
     </header>
 
-    <p id="global-countdown" class="hint global-countdown hidden"></p>
-
     <main class="layout">
       <section class="panel" id="vote-panel">
         <div class="panel-head">
@@ -26,6 +24,7 @@
             <h2 id="question-line" class="panel-caption">Noch keine Abstimmung ausgewaehlt.</h2>
           </div>
           <span id="status-pill" class="status-pill">wartet</span>
+          <span id="closing-hint" class="closing-hint hidden" aria-live="polite"></span>
         </div>
         <div class="vote-grid">
           <div class="vote-main">
@@ -69,7 +68,12 @@
     </main>
 
     <button id="view-toggle-btn" class="floating-btn floating-btn-left icon-only-btn" type="button" aria-label="Adminbereich anzeigen"></button>
-    <button id="name-modal-open" class="floating-btn hidden" type="button">Name</button>
+    <button
+      id="name-modal-open"
+      class="floating-btn hidden"
+      type="button"
+      aria-label="Name aendern"
+    ></button>
 
     <div id="name-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">
@@ -81,14 +85,6 @@
             <button type="button" id="name-cancel-btn">Abbrechen</button>
           </div>
         </form>
-      </div>
-    </div>
-
-    <div id="closing-overlay" class="closing-overlay hidden" aria-live="assertive">
-      <div class="closing-overlay-box">
-        <p>Abstimmung endet in</p>
-        <div id="closing-overlay-number" class="closing-overlay-number countdown-number">0</div>
-        <p>Sekunden</p>
       </div>
     </div>
 

@@ -125,6 +125,17 @@ p {
   color: #344054;
 }
 
+.closing-hint {
+  padding: 0.2rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: rgba(15, 23, 42, 0.08);
+  color: #111827;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .status-open {
   background: #e6f4ea;
   color: #16713d;
@@ -161,7 +172,8 @@ p {
 }
 
 .chart-box {
-  min-height: clamp(260px, 45vw, 420px);
+  height: clamp(260px, 45vw, 420px);
+  max-height: 420px;
 }
 
 .chart-box canvas {
@@ -257,6 +269,14 @@ button:disabled {
   box-shadow: 0 15px 30px rgba(15, 23, 42, 0.25);
 }
 
+#name-modal-open {
+  background-color: #0f172a;
+  background-image: url("/id-card.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 55%;
+}
+
 .floating-btn-left {
   right: auto;
   left: 1.25rem;
@@ -291,28 +311,7 @@ button:disabled {
   justify-content: flex-end;
 }
 
-.closing-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  text-align: center;
-}
-
-.closing-overlay-box {
-  background: rgba(15, 23, 42, 0.85);
-  padding: 1.25rem 2rem;
-  border-radius: 16px;
-}
-
-.closing-overlay-number {
-  font-size: clamp(3rem, 8vw, 5rem);
-  font-weight: 700;
-}
-
+#vote-panel,
 #admin-panel {
   grid-column: 1 / -1;
 }
