@@ -1,0 +1,13 @@
+{
+  "name": "abstimmung",
+  "version": "1.0.0",
+  "description": "Echtzeit Abstimmungsdemo mit WebSockets",
+  "main": "vote.js",
+  "scripts": {
+    "start": "node vote.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}

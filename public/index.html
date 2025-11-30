@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live-Abstimmung</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>Live-Abstimmung</h1>
+      <p>Waehle zuerst einen Namen und folge dann den Vorgaben der Moderation.</p>
+      <p id="name-display" class="hint name-hint"></p>
+    </header>
+
+    <p id="global-countdown" class="hint global-countdown hidden"></p>
+
+    <main class="layout">
+      <section class="panel" id="vote-panel">
+        <div class="panel-head">
+          <h2>Aktive Abstimmung</h2>
+          <span id="status-pill" class="status-pill">wartet</span>
+        </div>
+        <div id="question"></div>
+        <form id="options-form" class="options"></form>
+        <p id="vote-notice" class="hint"></p>
+        <div class="chart-box">
+          <canvas id="results-chart"></canvas>
+        </div>
+      </section>
+
+      <section class="panel hidden" id="admin-panel">
+        <details id="admin-details">
+          <summary>Adminbereich</summary>
+          <div id="admin-locked" class="admin-locked">
+            <p>Passwort</p>
+            <form id="admin-pass-form" class="row">
+              <input id="admin-password" type="password" placeholder="Passwort" autocomplete="off" />
+              <button type="submit">Freischalten</button>
+            </form>
+            <p id="admin-pass-hint" class="hint"></p>
+          </div>
+          <div id="admin-controls" class="hidden">
+            <label for="topic-select">Abstimmung auswaehlen</label>
+            <select id="topic-select"></select>
+            <label for="visibility-select">Modus</label>
+            <select id="visibility-select">
+              <option value="private">Privat (Namen verborgen)</option>
+              <option value="public">Oeffentlich (Namen sichtbar)</option>
+            </select>
+            <div class="button-row">
+              <button id="start-btn">Starten</button>
+              <button id="stop-btn">Stoppen</button>
+              <button id="reset-btn">Zuruecksetzen</button>
+            </div>
+            <p class="hint">Hinweis: Platzhalter-Themen sind deaktiviert.</p>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <button id="view-toggle-btn" class="floating-btn floating-btn-left" type="button">Adminbereich anzeigen</button>
+    <button id="name-modal-open" class="floating-btn hidden" type="button">Name aendern</button>
+
+    <div id="name-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h2>Wie moechtest du genannt werden?</h2>
+        <form id="name-form">
+          <input id="name-input" type="text" placeholder="Dein Name" autocomplete="off" />
+          <div class="button-row modal-actions">
+            <button type="submit">Speichern</button>
+            <button type="button" id="name-cancel-btn">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <template id="option-template">
+      <label class="option-row">
+        <input type="radio" name="vote-option" />
+        <span></span>
+      </label>
+    </template>
+
+    <script src="/client.js" type="module"></script>
+  </body>
+</html>
